@@ -1,0 +1,37 @@
+name: Auto Label PR by Branch Name
+on:
+  pull_request:
+    types: [opened, reopened]
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = context.payload.pull_request.head.ref;
+            const labelMap = {
+              "bugfix :bug:": /^bugfix\/.+$/,
+              "feature :sparkles:": /^feature\/.+$/,
+              "hotfix :fire:": /^hotfix\/.+$/,
+              "release :rocket:": /^release\/v\d+\.\d+\.\d+$/,
+              "pre-release :rocket:": /^pre-release\/v\d+\.\d+\.\d+$/,
+              "docs :memo:": /^docs\/.+$/
+            };
+            const labelsToAdd = Object.entries(labelMap)
+              // Filter: Keep only entries where the branch name matches the regex pattern
+              .filter(([_, pattern]) => pattern.test(branchName))
+              // Map: Extract just the label names from the matching entries
+              .map(([label]) => label);
+            if (labelsToAdd.length === 0) {
+              console.log(`No label matched for branch: ${branchName}`);
+              return;
+            }
+            console.log(`Matched labels: ${labelsToAdd.join(', ')}`);
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: labelsToAdd,
+            });
