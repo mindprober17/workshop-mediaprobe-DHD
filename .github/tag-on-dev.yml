@@ -1,0 +1,99 @@
+name: Tag on Dev Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - dev
+
+jobs:
+  bump-and-tag:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: dev
+      
+      - name: Get Semver label
+        id: semver
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labels = context.payload.pull_request.labels.map(label => label.name);
+            
+            if (labels.includes('Semver-Major')) {
+              return 'major';
+            } else if (labels.includes('Semver-Minor')) {
+              return 'minor';
+            } else if (labels.includes('Semver-Patch')) {
+              return 'patch';
+            } else {
+              core.setFailed('No Semver label found on PR');
+            }
+          result-encoding: string
+      
+      - name: Read current version
+        id: current_version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+      
+      - name: Bump version
+        id: bump
+        run: |
+          VERSION="${{ steps.current_version.outputs.version }}"
+          BUMP_TYPE="${{ steps.semver.outputs.result }}"
+          
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          case $BUMP_TYPE in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$major.$minor.$patch"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          
+          # Update VERSION file
+          echo "$NEW_VERSION" > VERSION
+      
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "Bump version to ${{ steps.bump.outputs.new_version }}"
+          git push
+      
+      - name: Create tag
+        run: |
+          git tag "v${{ steps.bump.outputs.new_version }}"
+          git push origin "v${{ steps.bump.outputs.new_version }}"
+      
+      - name: Summary
+        run: |
+          echo "### Version Bump Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Previous version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New version**: ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bump type**: ${{ steps.semver.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag created**: v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
