@@ -1,51 +1,37 @@
-name: Label PRs by Branch
+name: Auto Label PR by Branch Name
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened]
 jobs:
   label:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
-      - name: Label based on branch prefix
+      - name: Check out PR info
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const branchName = context.payload.pull_request.head.ref;
-            const labels = [];
-            // Feature branches
-            if (branchName.startsWith('feature/')) {
-              labels.push('feature :sparkles:', 'Semver-Minor');
+            const labelMap = {
+              "bugfix :bug:": /^bugfix\/.+$/,
+              "feature :sparkles:": /^feature\/.+$/,
+              "hotfix :fire:": /^hotfix\/.+$/,
+              "release :rocket:": /^release\/v\d+\.\d+\.\d+$/,
+              "pre-release :rocket:": /^pre-release\/v\d+\.\d+\.\d+$/,
+              "docs :memo:": /^docs\/.+$/
+            };
+            const labelsToAdd = Object.entries(labelMap)
+              // Filter: Keep only entries where the branch name matches the regex pattern
+              .filter(([_, pattern]) => pattern.test(branchName))
+              // Map: Extract just the label names from the matching entries
+              .map(([label]) => label);
+            if (labelsToAdd.length === 0) {
+              console.log(`No label matched for branch: ${branchName}`);
+              return;
             }
-            // Bugfix branches
-            if (branchName.startsWith('bugfix/') || branchName.startsWith('fix/')) {
-              labels.push('bugfix :bug:', 'Semver-Patch');
-            }
-            // Documentation branches
-            if (branchName.startsWith('docs/')) {
-              labels.push('docs :notebook:', 'Semver-Patch');
-            }
-            // Major version branches
-            if (branchName.startsWith('major/')) {
-              labels.push('Semver-Major');
-            }
-            // Pre-release branches
-            if (branchName.startsWith('pre-release/')) {
-              labels.push('pre-release :rocket:');
-            }
-            // Release branches
-            if (branchName.startsWith('release/')) {
-              labels.push('release :rocket:');
-            }
-            // Add labels if any matched
-            if (labels.length > 0) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                labels: labels
-              });
-            }
+            console.log(`Matched labels: ${labelsToAdd.join(', ')}`);
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: labelsToAdd,
+            });
