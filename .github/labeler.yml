@@ -1,0 +1,16 @@
+'feature :sparkles:':
+  - head-branch: ['^feature/', 'feature']
+'bugfix :bug:':
+  - head-branch: ['^bugfix/', '^fix/', 'bugfix', 'fix']
+'docs :notebook:':
+  - head-branch: ['^docs/', 'docs']
+'Semver-Major':
+  - head-branch: ['^major/']
+'Semver-Minor':
+  - head-branch: ['^minor/', '^feature/']
+'Semver-Patch':
+  - head-branch: ['^patch/', '^bugfix/', '^fix/', '^docs/']
+'pre-release :rocket:':
+  - head-branch: ['^pre-release/']
+'release :rocket:':
+  - head-branch: ['^release/']
