@@ -1,3 +1,4 @@
+name: Label PRs by Branch
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -8,8 +9,43 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Label based on branch name
-        uses: actions/labeler@v5
+      - name: Label based on branch prefix
+        uses: actions/github-script@v7
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          configuration-path: .github/labeler.yml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branchName = context.payload.pull_request.head.ref;
+            const labels = [];
+            // Feature branches
+            if (branchName.startsWith('feature/')) {
+              labels.push('feature :sparkles:', 'Semver-Minor');
+            }
+            // Bugfix branches
+            if (branchName.startsWith('bugfix/') || branchName.startsWith('fix/')) {
+              labels.push('bugfix :bug:', 'Semver-Patch');
+            }
+            // Documentation branches
+            if (branchName.startsWith('docs/')) {
+              labels.push('docs :notebook:', 'Semver-Patch');
+            }
+            // Major version branches
+            if (branchName.startsWith('major/')) {
+              labels.push('Semver-Major');
+            }
+            // Pre-release branches
+            if (branchName.startsWith('pre-release/')) {
+              labels.push('pre-release :rocket:');
+            }
+            // Release branches
+            if (branchName.startsWith('release/')) {
+              labels.push('release :rocket:');
+            }
+            // Add labels if any matched
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: labels
+              });
+            }
