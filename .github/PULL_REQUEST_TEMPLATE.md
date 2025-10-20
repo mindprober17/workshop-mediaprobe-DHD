@@ -11,6 +11,8 @@ Type of Change
 
 [ ] 🧹 Refactor (non-breaking change that improves code structure or performance)
 
+[ ] 🚀 Performance improvemen
+t
 [ ] ⚙️ Build/CI/CD update
 
 [ ] 📦 Other (please describe):
