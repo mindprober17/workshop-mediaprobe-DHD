@@ -1,0 +1,13 @@
+name: Deploy staging
+on:
+    push:
+        branches:
+            - staging
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@v4
+            - name: Finish
+              run: echo "Deploy staging done"
