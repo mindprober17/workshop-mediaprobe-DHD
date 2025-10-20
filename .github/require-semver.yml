@@ -1,0 +1,25 @@
+name: Require Semver Label
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+jobs:
+  check-semver:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check for Semver label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labels = context.payload.pull_request.labels.map(label => label.name);
+            const semverLabels = ['Semver-Major', 'Semver-Minor', 'Semver-Patch'];
+            const hasSemverLabel = semverLabels.some(label => labels.includes(label));
+            if (!hasSemverLabel) {
+              core.setFailed(':x: PR must have one of the following labels: Semver-Major, Semver-Minor, or Semver-Patch');
+            } else {
+              const appliedLabel = semverLabels.find(label => labels.includes(label));
+              console.log(`:white_check_mark: PR has required Semver label: ${appliedLabel}`);
+            }
